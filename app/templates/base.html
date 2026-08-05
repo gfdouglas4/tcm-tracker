@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TCM Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  {% if user %}
+  <nav class="topnav">
+    <div class="brand">TCM Tracker</div>
+    <div class="links">
+      <a href="/">Dashboard</a>
+      <a href="/billing">Billing follow-up</a>
+      {% if user.role.value == "admin" %}<a href="/users">Users</a>{% endif %}
+    </div>
+    <div class="userbox">
+      {{ user.username }} &middot; <a href="/logout">Log out</a>
+    </div>
+  </nav>
+  {% endif %}
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

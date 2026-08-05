@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Users — TCM Tracker{% endblock %}
+{% block content %}
+<h1>Users</h1>
+
+{% if temp_password %}
+<div class="banner">
+  Account <strong>{{ new_username }}</strong> created. Temporary password (share this securely, e.g. in person or via a password manager — not over unencrypted email):
+  <code>{{ temp_password }}</code>
+  They'll be required to change it and enroll in 2FA on first login.
+</div>
+{% endif %}
+
+<table class="episodes">
+  <thead><tr><th>Username</th><th>Role</th><th>2FA enrolled</th><th>Active</th><th>Created</th></tr></thead>
+  <tbody>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.username }}</td>
+      <td>{{ u.role.value }}</td>
+      <td>{{ "Yes" if u.totp_enabled else "No" }}</td>
+      <td>{{ "Yes" if u.is_active else "No" }}</td>
+      <td>{{ u.created_at.date() }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Add a user</h2>
+<form method="post" action="/users/new" class="episode-form">
+  <div class="grid2">
+    <div><label>Username</label><input type="text" name="username" required></div>
+    <div><label>Role</label>
+      <select name="role">
+        <option value="staff">staff</option>
+        <option value="admin">admin</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-actions"><button type="submit">Create user</button></div>
+</form>
+{% endblock %}

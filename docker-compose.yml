@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - tcm_pgdata:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      SESSION_SECRET: ${SESSION_SECRET}
+      COOKIE_SECURE: "true"
+    # Bind only to localhost — Nginx Proxy Manager reaches it either via
+    # 127.0.0.1:8020 (if NPM runs in network_mode: host, as with your n8n setup)
+    # or via the npm-network container name below (as with open-webui).
+    ports:
+      - "127.0.0.1:8020:8000"
+    networks:
+      - internal
+      - npm-network
+
+networks:
+  internal:
+  npm-network:
+    external: true
+
+volumes:
+  tcm_pgdata:

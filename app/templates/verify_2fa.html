@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Verify code{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h1>Enter your 2FA code</h1>
+  <p class="muted">Open your authenticator app and enter the current 6-digit code.</p>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="post" action="/verify-2fa">
+    <label>6-digit code</label>
+    <input type="text" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autofocus>
+    <button type="submit">Verify</button>
+  </form>
+</div>
+{% endblock %}

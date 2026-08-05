@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Set up two-factor authentication{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h1>Set up two-factor authentication</h1>
+  <p class="muted">Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password, etc.), then enter the 6-digit code it shows.</p>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <img class="qr" src="data:image/png;base64,{{ qr_b64 }}" alt="TOTP QR code">
+  <p class="muted small">Can't scan? Enter this key manually: <code>{{ secret }}</code></p>
+  <form method="post" action="/setup-2fa">
+    <label>6-digit code</label>
+    <input type="text" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required autofocus>
+    <button type="submit">Enable 2FA &amp; finish login</button>
+  </form>
+  <p class="muted small">This is required before you can access any patient information in this system.</p>
+</div>
+{% endblock %}

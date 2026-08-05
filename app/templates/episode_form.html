@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if episode else "New" }} TCM episode{% endblock %}
+{% block content %}
+<h1>{{ "Edit" if episode else "New" }} TCM episode</h1>
+<form method="post" action="{{ '/episodes/' + episode.id + '/edit' if episode else '/episodes/new' }}" class="episode-form">
+
+  <fieldset>
+    <legend>Patient (de-identified)</legend>
+    <div class="grid2">
+      <div><label>Patient initials</label>
+        <input type="text" name="patient_initials" maxlength="8" value="{{ episode.patient_initials if episode else '' }}" required></div>
+      <div><label>Medical record number</label>
+        <input type="text" name="mrn" value="{{ episode.mrn if episode else '' }}" required></div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Admission / discharge</legend>
+    <div class="grid2">
+      <div><label>Hospital / facility</label>
+        <input type="text" name="facility_name" value="{{ episode.facility_name if episode else '' }}" required></div>
+      <div><label>Encounter type</label>
+        <select name="encounter_type">
+          {% for v in ["inpatient", "ed", "snf"] %}
+          <option value="{{ v }}" {{ "selected" if episode and episode.encounter_type == v }}>{{ v }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Admission date</label>
+        <input type="date" name="admission_date" value="{{ episode.admission_date if episode else '' }}"></div>
+      <div><label>Discharge date</label>
+        <input type="date" name="discharge_date" value="{{ episode.discharge_date if episode else '' }}" required></div>
+    </div>
+    <label>Discharge diagnosis</label>
+    <textarea name="discharge_diagnosis" rows="2">{{ episode.discharge_diagnosis if episode else '' }}</textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>TCM contact &amp; visit</legend>
+    <div class="grid2">
+      <div><label>Complexity</label>
+        <select name="complexity">
+          {% for v in ["unspecified", "moderate", "high"] %}
+          <option value="{{ v }}" {{ "selected" if episode and episode.complexity.value == v }}>{{ v }} {{ "(99495, 14-day visit)" if v == "moderate" else ("(99496, 7-day visit)" if v == "high" else "") }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>TCM order / contact initiated date</label>
+        <input type="date" name="tcm_contact_date" value="{{ episode.tcm_contact_date if episode else '' }}"></div>
+      <div><label>Contact method</label>
+        <input type="text" name="contact_method" placeholder="phone, portal, etc." value="{{ episode.contact_method if episode else '' }}"></div>
+      <div><label>Appointment scheduled date</label>
+        <input type="date" name="appointment_scheduled_date" value="{{ episode.appointment_scheduled_date if episode else '' }}"></div>
+      {% if episode %}
+      <div><label>Appointment completed date</label>
+        <input type="date" name="appointment_completed_date" value="{{ episode.appointment_completed_date or '' }}"></div>
+      {% endif %}
+    </div>
+  </fieldset>
+
+  {% if episode %}
+  <fieldset>
+    <legend>Billing follow-up</legend>
+    <div class="grid2">
+      <div><label>Billing status</label>
+        <select name="billing_status">
+          {% for v in ["not_ready", "ready_to_bill", "submitted", "paid", "denied"] %}
+          <option value="{{ v }}" {{ "selected" if episode.billing_status.value == v }}>{{ v.replace("_", " ") }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>CPT code</label>
+        <input type="text" name="cpt_code" placeholder="99495 / 99496" value="{{ episode.cpt_code or '' }}"></div>
+      <div><label>Billing submitted date</label>
+        <input type="date" name="billing_submitted_date" value="{{ episode.billing_submitted_date or '' }}"></div>
+    </div>
+    <label>Billing notes</label>
+    <textarea name="billing_notes" rows="2">{{ episode.billing_notes or '' }}</textarea>
+  </fieldset>
+  {% endif %}
+
+  <label>General notes</label>
+  <textarea name="notes" rows="3">{{ episode.notes if episode else '' }}</textarea>
+
+  {% if episode %}
+  <label class="checkbox"><input type="checkbox" name="is_closed" {{ "checked" if episode.is_closed }}> Episode closed / fully resolved</label>
+  {% endif %}
+
+  <div class="form-actions">
+    <button type="submit">{{ "Save changes" if episode else "Create episode" }}</button>
+    <a class="btn-secondary" href="/">Cancel</a>
+  </div>
+</form>
+{% endblock %}

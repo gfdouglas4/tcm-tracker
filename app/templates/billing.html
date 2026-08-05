@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Billing follow-up — TCM Tracker{% endblock %}
+{% block content %}
+<h1>TCM billing follow-up</h1>
+<p class="muted">All episodes, most recent discharge first. Use this to double-check every completed TCM visit gets billed.</p>
+
+<table class="episodes">
+  <thead>
+    <tr>
+      <th>Patient</th><th>MRN</th><th>Discharged</th><th>Visit completed</th>
+      <th>Complexity</th><th>CPT</th><th>Billing status</th><th>Submitted</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in episodes %}
+    {% set needs_attention = e.appointment_completed_date and e.billing_status.value in ["not_ready", "ready_to_bill"] %}
+    <tr class="{{ 'row-warn' if needs_attention }}">
+      <td>{{ e.patient_initials }}</td>
+      <td>{{ e.mrn }}</td>
+      <td>{{ e.discharge_date }}</td>
+      <td>{{ e.appointment_completed_date or "—" }}</td>
+      <td>{{ e.complexity.value }}</td>
+      <td>{{ e.cpt_code or e.suggested_cpt or "—" }}</td>
+      <td>{{ e.billing_status.value.replace("_", " ") }}</td>
+      <td>{{ e.billing_submitted_date or "—" }}</td>
+      <td><a href="/episodes/{{ e.id }}/edit">Edit</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="9" class="muted">No episodes yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

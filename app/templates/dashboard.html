@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TCM Tracker{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Active TCM episodes</h1>
+  <a class="btn" href="/episodes/new">+ New episode</a>
+</div>
+
+{% if billing_followup %}
+<div class="banner">
+  {{ billing_followup|length }} episode(s) have a completed visit but are not yet marked billed.
+  <a href="/billing">Review billing follow-up &rarr;</a>
+</div>
+{% endif %}
+
+<table class="episodes">
+  <thead>
+    <tr>
+      <th>Patient</th>
+      <th>MRN</th>
+      <th>Facility</th>
+      <th>Discharged</th>
+      <th>Contact due</th>
+      <th>Visit due</th>
+      <th>Appt scheduled</th>
+      <th>Complexity</th>
+      <th>Billing</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in episodes %}
+    {% set contact_late = (not e.tcm_contact_date) and e.contact_deadline and today > e.contact_deadline %}
+    {% set visit_late = (not e.appointment_completed_date) and e.visit_deadline and today > e.visit_deadline %}
+    {% set row_class = "row-danger" if (contact_late or visit_late) else ("row-warn" if (e.visit_deadline and (e.visit_deadline - today).days <= 2 and not e.appointment_completed_date) else "") %}
+    <tr class="{{ row_class }}">
+      <td>{{ e.patient_initials }}</td>
+      <td>{{ e.mrn }}</td>
+      <td>{{ e.facility_name }}</td>
+      <td>{{ e.discharge_date }}</td>
+      <td>
+        {% if e.tcm_contact_date %}✓ {{ e.tcm_contact_date }}{% else %}<span class="{{ 'flag' if contact_late }}">{{ e.contact_deadline }}</span>{% endif %}
+      </td>
+      <td>
+        {% if e.appointment_completed_date %}✓ {{ e.appointment_completed_date }}{% else %}<span class="{{ 'flag' if visit_late }}">{{ e.visit_deadline }}</span>{% endif %}
+      </td>
+      <td>{{ e.appointment_scheduled_date or "—" }}</td>
+      <td>{{ e.complexity.value if e.complexity else "—" }} {% if e.suggested_cpt %}({{ e.suggested_cpt }}){% endif %}</td>
+      <td>{{ e.billing_status.value if e.billing_status else "—" }}</td>
+      <td><a href="/episodes/{{ e.id }}/edit">Edit</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="10" class="muted">No active episodes yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
