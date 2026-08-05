@@ -17,7 +17,7 @@
     <tr class="{{ 'row-warn' if needs_attention }}">
       <td>{{ e.patient_initials }}</td>
       <td>{{ e.mrn }}</td>
-      <td>{{ e.discharge_date }}</td>
+      <td>{{ e.discharge_date or "—" }}</td>
       <td>{{ e.appointment_completed_date or "—" }}</td>
       <td>{{ e.complexity.value }}</td>
       <td>{{ e.cpt_code or e.suggested_cpt or "—" }}</td>
