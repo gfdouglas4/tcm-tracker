@@ -17,8 +17,28 @@
   <fieldset>
     <legend>Admission / discharge</legend>
     <div class="grid2">
-      <div><label>Hospital / facility</label>
-        <input type="text" name="facility_name" value="{{ episode.facility_name if episode else '' }}" required></div>
+      <div>
+        <label>Hospital / facility</label>
+        {% set is_custom = episode and episode.facility_name not in facilities %}
+        <select name="facility_select" id="facility_select" onchange="toggleOtherFacility()" required>
+          <option value="" {{ "selected" if not episode }} disabled>-- Select facility --</option>
+          {% for f in facilities %}
+          <option value="{{ f }}" {{ "selected" if episode and episode.facility_name == f }}>{{ f }}</option>
+          {% endfor %}
+          <option value="__other__" {{ "selected" if is_custom }}>Other (type below)</option>
+        </select>
+        <input type="text" name="facility_other" id="facility_other"
+               placeholder="Enter facility name"
+               value="{{ episode.facility_name if is_custom else '' }}"
+               style="margin-top: 6px; {{ '' if is_custom else 'display:none;' }}">
+      </div>
+      <script>
+        function toggleOtherFacility() {
+          var sel = document.getElementById('facility_select');
+          var other = document.getElementById('facility_other');
+          other.style.display = (sel.value === '__other__') ? 'block' : 'none';
+        }
+      </script>
       <div><label>Encounter type</label>
         <select name="encounter_type">
           {% for v in ["inpatient", "ed", "snf"] %}
@@ -28,7 +48,8 @@
       <div><label>Admission date</label>
         <input type="date" name="admission_date" value="{{ episode.admission_date if episode else '' }}"></div>
       <div><label>Discharge date</label>
-        <input type="date" name="discharge_date" value="{{ episode.discharge_date if episode else '' }}" required></div>
+        <input type="date" name="discharge_date" value="{{ episode.discharge_date if episode else '' }}">
+        <p class="muted small">Leave blank if the patient is still admitted — the dashboard will show them as "In patient."</p></div>
     </div>
     <label>Discharge diagnosis</label>
     <textarea name="discharge_diagnosis" rows="2">{{ episode.discharge_diagnosis if episode else '' }}</textarea>
