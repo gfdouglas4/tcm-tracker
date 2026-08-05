@@ -32,6 +32,17 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
+# Preset facility list shown as quick-pick options on the episode form.
+# "Other" always lets staff type in anything not on this list.
+FACILITY_OPTIONS = [
+    "UAB St. Vincent's",
+    "UAB St. Vincent's East",
+    "UAB St. Vincent's Saint Clair",
+    "UAB St. Vincent's Blount",
+    "Grandview Medical Center",
+    "University Hospital",
+]
+
 
 def log_action(db: Session, request: Request, action: str, entity_type=None, entity_id=None, details=None):
     user_id = request.session.get("user_id")
@@ -208,7 +219,8 @@ def new_episode_form(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse(
-        "episode_form.html", {"request": request, "user": user, "episode": None}
+        "episode_form.html",
+        {"request": request, "user": user, "episode": None, "facilities": FACILITY_OPTIONS},
     )
 
 
@@ -216,15 +228,23 @@ def _parse_date(val: str):
     return datetime.strptime(val, "%Y-%m-%d").date() if val else None
 
 
+def _resolve_facility(facility_select: str, facility_other: str) -> str:
+    """Combine the preset dropdown + free-text 'Other' field into one value."""
+    if facility_select == "__other__":
+        return facility_other.strip()
+    return facility_select.strip()
+
+
 @app.post("/episodes/new")
 def create_episode(
     request: Request,
     patient_initials: str = Form(...),
     mrn: str = Form(...),
-    facility_name: str = Form(...),
+    facility_select: str = Form(...),
+    facility_other: str = Form(""),
     encounter_type: str = Form("inpatient"),
     admission_date: str = Form(""),
-    discharge_date: str = Form(...),
+    discharge_date: str = Form(""),
     discharge_diagnosis: str = Form(""),
     complexity: str = Form("unspecified"),
     tcm_contact_date: str = Form(""),
@@ -240,7 +260,7 @@ def create_episode(
     episode = models.TCMEpisode(
         patient_initials=patient_initials.strip().upper(),
         mrn=mrn.strip(),
-        facility_name=facility_name.strip(),
+        facility_name=_resolve_facility(facility_select, facility_other),
         encounter_type=encounter_type,
         admission_date=_parse_date(admission_date),
         discharge_date=_parse_date(discharge_date),
@@ -268,7 +288,8 @@ def edit_episode_form(episode_id: str, request: Request, db: Session = Depends(g
     if not episode:
         raise HTTPException(404, "Episode not found")
     return templates.TemplateResponse(
-        "episode_form.html", {"request": request, "user": user, "episode": episode}
+        "episode_form.html",
+        {"request": request, "user": user, "episode": episode, "facilities": FACILITY_OPTIONS},
     )
 
 
@@ -278,10 +299,11 @@ def update_episode(
     request: Request,
     patient_initials: str = Form(...),
     mrn: str = Form(...),
-    facility_name: str = Form(...),
+    facility_select: str = Form(...),
+    facility_other: str = Form(""),
     encounter_type: str = Form("inpatient"),
     admission_date: str = Form(""),
-    discharge_date: str = Form(...),
+    discharge_date: str = Form(""),
     discharge_diagnosis: str = Form(""),
     complexity: str = Form("unspecified"),
     tcm_contact_date: str = Form(""),
@@ -305,7 +327,7 @@ def update_episode(
 
     episode.patient_initials = patient_initials.strip().upper()
     episode.mrn = mrn.strip()
-    episode.facility_name = facility_name.strip()
+    episode.facility_name = _resolve_facility(facility_select, facility_other)
     episode.encounter_type = encounter_type
     episode.admission_date = _parse_date(admission_date)
     episode.discharge_date = _parse_date(discharge_date)
