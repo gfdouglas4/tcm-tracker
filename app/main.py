@@ -9,12 +9,53 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.database import Base, engine, get_db
 from app import models, auth
 
 Base.metadata.create_all(bind=engine)
+
+
+def _sync_nullable_columns():
+    """
+    Base.metadata.create_all() only creates missing tables — it never alters
+    columns on tables that already exist. The live tcm_episodes/users/audit_log
+    tables predate some model changes and can still carry NOT NULL constraints
+    the model no longer expects (e.g. discharge_date, meant to stay empty while
+    a patient is still admitted). Reconcile on startup; safe to re-run — a
+    column that's already nullable is a no-op.
+    """
+    nullable_columns = [
+        ("users", "totp_secret"),
+        ("tcm_episodes", "admission_date"),
+        ("tcm_episodes", "discharge_date"),
+        ("tcm_episodes", "discharge_diagnosis"),
+        ("tcm_episodes", "tcm_contact_date"),
+        ("tcm_episodes", "contact_method"),
+        ("tcm_episodes", "appointment_scheduled_date"),
+        ("tcm_episodes", "appointment_completed_date"),
+        ("tcm_episodes", "cpt_code"),
+        ("tcm_episodes", "billing_submitted_date"),
+        ("tcm_episodes", "billing_notes"),
+        ("tcm_episodes", "notes"),
+        ("tcm_episodes", "created_by"),
+        ("audit_log", "user_id"),
+        ("audit_log", "username"),
+        ("audit_log", "entity_type"),
+        ("audit_log", "entity_id"),
+        ("audit_log", "details"),
+    ]
+    for table, column in nullable_columns:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f'ALTER TABLE {table} ALTER COLUMN {column} DROP NOT NULL'))
+        except Exception:
+            pass  # table/column doesn't exist yet, or already nullable — either way, fine
+
+
+_sync_nullable_columns()
 
 SECRET_KEY = os.environ.get("SESSION_SECRET")
 if not SECRET_KEY:
