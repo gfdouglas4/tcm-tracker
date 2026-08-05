@@ -19,6 +19,7 @@
       <th>Patient</th>
       <th>MRN</th>
       <th>Facility</th>
+      <th>Status</th>
       <th>Discharged</th>
       <th>Contact due</th>
       <th>Visit due</th>
@@ -37,12 +38,13 @@
       <td>{{ e.patient_initials }}</td>
       <td>{{ e.mrn }}</td>
       <td>{{ e.facility_name }}</td>
-      <td>{{ e.discharge_date }}</td>
+      <td>{{ e.status_label }}</td>
+      <td>{{ e.discharge_date or "—" }}</td>
       <td>
-        {% if e.tcm_contact_date %}✓ {{ e.tcm_contact_date }}{% else %}<span class="{{ 'flag' if contact_late }}">{{ e.contact_deadline }}</span>{% endif %}
+        {% if e.tcm_contact_date %}✓ {{ e.tcm_contact_date }}{% elif e.contact_deadline %}<span class="{{ 'flag' if contact_late }}">{{ e.contact_deadline }}</span>{% else %}—{% endif %}
       </td>
       <td>
-        {% if e.appointment_completed_date %}✓ {{ e.appointment_completed_date }}{% else %}<span class="{{ 'flag' if visit_late }}">{{ e.visit_deadline }}</span>{% endif %}
+        {% if e.appointment_completed_date %}✓ {{ e.appointment_completed_date }}{% elif e.visit_deadline %}<span class="{{ 'flag' if visit_late }}">{{ e.visit_deadline }}</span>{% else %}—{% endif %}
       </td>
       <td>{{ e.appointment_scheduled_date or "—" }}</td>
       <td>{{ e.complexity.value if e.complexity else "—" }} {% if e.suggested_cpt %}({{ e.suggested_cpt }}){% endif %}</td>
@@ -50,7 +52,7 @@
       <td><a href="/episodes/{{ e.id }}/edit">Edit</a></td>
     </tr>
     {% else %}
-    <tr><td colspan="10" class="muted">No active episodes yet.</td></tr>
+    <tr><td colspan="11" class="muted">No active episodes yet.</td></tr>
     {% endfor %}
   </tbody>
 </table>
