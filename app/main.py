@@ -484,9 +484,14 @@ def delete_user(user_id: str, request: Request, db: Session = Depends(get_db)):
             status_code=400,
         )
 
-    # Preserve episode history — detach rather than cascade-delete.
+    # Preserve episode + audit history — detach rather than cascade-delete
+    # (both tables FK to users.id; audit_log.user_id is set on the actor's
+    # own login/logout/2fa events, so a deleted user's own history hits this too).
     db.query(models.TCMEpisode).filter(models.TCMEpisode.created_by == target.id).update(
         {"created_by": None}
+    )
+    db.query(models.AuditLog).filter(models.AuditLog.user_id == target.id).update(
+        {"user_id": None}
     )
     deleted_username = target.username
     db.delete(target)
