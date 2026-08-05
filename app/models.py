@@ -64,7 +64,7 @@ class TCMEpisode(Base):
     encounter_type = Column(String(32), default="inpatient")  # inpatient | ed | snf
 
     admission_date = Column(Date, nullable=True)
-    discharge_date = Column(Date, nullable=False)
+    discharge_date = Column(Date, nullable=True)  # null while patient is still admitted
     discharge_diagnosis = Column(Text, nullable=True)
 
     complexity = Column(Enum(ComplexityLevel), default=ComplexityLevel.unspecified)
@@ -117,6 +117,15 @@ class TCMEpisode(Base):
         if self.complexity == ComplexityLevel.moderate:
             return "99495"
         return None
+
+    @property
+    def status_label(self):
+        """Human-readable status shown on the dashboard."""
+        if not self.discharge_date:
+            return "In patient" if self.admission_date else "Pending admission info"
+        if self.appointment_completed_date:
+            return "Visit completed"
+        return "Discharged — TCM in progress"
 
 
 class AuditLog(Base):
