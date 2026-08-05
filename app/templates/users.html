@@ -5,14 +5,15 @@
 
 {% if temp_password %}
 <div class="banner">
-  Account <strong>{{ new_username }}</strong> created. Temporary password (share this securely, e.g. in person or via a password manager — not over unencrypted email):
+  Account <strong>{{ new_username }}</strong> {{ "created" if not reset_username else "password reset" }}. Temporary password (share this securely, e.g. in person or via a password manager — not over unencrypted email):
   <code>{{ temp_password }}</code>
-  They'll be required to change it and enroll in 2FA on first login.
+  They'll be required to change it{{ " and re-enroll in 2FA" if reset_username else " and enroll in 2FA" }} on first login.
 </div>
 {% endif %}
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
 
 <table class="episodes">
-  <thead><tr><th>Username</th><th>Role</th><th>2FA enrolled</th><th>Active</th><th>Created</th></tr></thead>
+  <thead><tr><th>Username</th><th>Role</th><th>2FA enrolled</th><th>Active</th><th>Created</th><th>Actions</th></tr></thead>
   <tbody>
     {% for u in users %}
     <tr>
@@ -21,6 +22,29 @@
       <td>{{ "Yes" if u.totp_enabled else "No" }}</td>
       <td>{{ "Yes" if u.is_active else "No" }}</td>
       <td>{{ u.created_at.date() }}</td>
+      <td>
+        <div class="row-actions">
+          <form method="post" action="/users/{{ u.id }}/edit">
+            <select name="role" {{ "disabled" if u.id == user.id else "" }}>
+              <option value="staff" {{ "selected" if u.role.value == "staff" }}>staff</option>
+              <option value="admin" {{ "selected" if u.role.value == "admin" }}>admin</option>
+            </select>
+            <label class="checkbox" style="display:inline-flex;">
+              <input type="checkbox" name="is_active" value="1" {{ "checked" if u.is_active }} {{ "disabled" if u.id == user.id }}>
+              active
+            </label>
+            <button type="submit" class="btn-secondary btn-small" {{ "disabled" if u.id == user.id }}>Save</button>
+          </form>
+          <form method="post" action="/users/{{ u.id }}/reset-password" onsubmit="return confirm('Reset password for {{ u.username }}? This also clears their 2FA enrollment.');">
+            <button type="submit" class="btn-secondary btn-small">Reset password</button>
+          </form>
+          {% if u.id != user.id %}
+          <form method="post" action="/users/{{ u.id }}/delete" onsubmit="return confirm('Permanently delete {{ u.username }}? Their past episodes/audit history are kept but unlinked from this account.');">
+            <button type="submit" class="btn-danger btn-small">Delete</button>
+          </form>
+          {% endif %}
+        </div>
+      </td>
     </tr>
     {% endfor %}
   </tbody>

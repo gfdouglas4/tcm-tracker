@@ -66,6 +66,11 @@ button, .btn, .btn-secondary {
 }
 button, .btn { background: var(--accent); color: #fff; }
 .btn-secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-small { padding: 5px 10px; font-size: 12px; }
+.row-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row-actions form { margin: 0; }
+.row-actions select { padding: 4px 6px; font-size: 12px; width: auto; }
 
 .muted { color: var(--muted); }
 .muted.small { font-size: 12px; }

@@ -374,8 +374,126 @@ def user_admin(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(403, "Admin access required")
     users = db.query(models.User).order_by(models.User.username).all()
     return templates.TemplateResponse(
-        "users.html", {"request": request, "user": user, "users": users, "temp_password": None}
+        "users.html",
+        {"request": request, "user": user, "users": users, "temp_password": None,
+         "reset_username": None, "error": None},
     )
+
+
+def _remaining_active_admins(db: Session, excluding_id: str) -> int:
+    return db.query(models.User).filter(
+        models.User.role == models.UserRole.admin,
+        models.User.is_active == True,  # noqa: E712
+        models.User.id != excluding_id,
+    ).count()
+
+
+@app.post("/users/{user_id}/edit")
+def edit_user(
+    user_id: str,
+    request: Request,
+    role: str = Form("staff"),
+    is_active: str = Form(None),
+    db: Session = Depends(get_db),
+):
+    admin = current_user(request, db)
+    if not admin or admin.role != models.UserRole.admin:
+        raise HTTPException(403, "Admin access required")
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(404, "User not found")
+
+    new_active = bool(is_active)
+    demoting_or_deactivating_admin = (
+        target.role == models.UserRole.admin and (role != "admin" or not new_active)
+    )
+    if target.id == admin.id and demoting_or_deactivating_admin:
+        # Don't let an admin lock themselves out via their own row's controls
+        # (UI also disables this, but enforce server-side too).
+        demoting_or_deactivating_admin = True
+
+    if demoting_or_deactivating_admin and _remaining_active_admins(db, target.id) == 0:
+        users = db.query(models.User).order_by(models.User.username).all()
+        return templates.TemplateResponse(
+            "users.html",
+            {"request": request, "user": admin, "users": users, "temp_password": None,
+             "reset_username": None, "error": "Can't remove the last active admin."},
+            status_code=400,
+        )
+
+    target.role = role
+    target.is_active = new_active
+    db.commit()
+    log_action(db, request, "edit_user", entity_type="user", entity_id=target.id,
+               details=f"role={role} active={new_active}")
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{user_id}/reset-password")
+def reset_user_password(user_id: str, request: Request, db: Session = Depends(get_db)):
+    import secrets
+    admin = current_user(request, db)
+    if not admin or admin.role != models.UserRole.admin:
+        raise HTTPException(403, "Admin access required")
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(404, "User not found")
+
+    temp_password = secrets.token_urlsafe(9)
+    target.password_hash = auth.hash_password(temp_password)
+    target.must_change_password = True
+    target.totp_enabled = False
+    target.totp_secret = None
+    db.commit()
+    log_action(db, request, "reset_password", entity_type="user", entity_id=target.id)
+
+    users = db.query(models.User).order_by(models.User.username).all()
+    return templates.TemplateResponse(
+        "users.html",
+        {
+            "request": request, "user": admin, "users": users,
+            "temp_password": temp_password, "new_username": target.username,
+            "reset_username": target.username, "error": None,
+        },
+    )
+
+
+@app.post("/users/{user_id}/delete")
+def delete_user(user_id: str, request: Request, db: Session = Depends(get_db)):
+    admin = current_user(request, db)
+    if not admin or admin.role != models.UserRole.admin:
+        raise HTTPException(403, "Admin access required")
+    if user_id == admin.id:
+        users = db.query(models.User).order_by(models.User.username).all()
+        return templates.TemplateResponse(
+            "users.html",
+            {"request": request, "user": admin, "users": users, "temp_password": None,
+             "reset_username": None, "error": "You can't delete the account you're currently logged in as."},
+            status_code=400,
+        )
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(404, "User not found")
+
+    if target.role == models.UserRole.admin and _remaining_active_admins(db, target.id) == 0:
+        users = db.query(models.User).order_by(models.User.username).all()
+        return templates.TemplateResponse(
+            "users.html",
+            {"request": request, "user": admin, "users": users, "temp_password": None,
+             "reset_username": None, "error": "Can't delete the last active admin."},
+            status_code=400,
+        )
+
+    # Preserve episode history — detach rather than cascade-delete.
+    db.query(models.TCMEpisode).filter(models.TCMEpisode.created_by == target.id).update(
+        {"created_by": None}
+    )
+    deleted_username = target.username
+    db.delete(target)
+    db.commit()
+    log_action(db, request, "delete_user", entity_type="user", entity_id=user_id,
+               details=f"username={deleted_username}")
+    return RedirectResponse("/users", status_code=303)
 
 
 @app.post("/users/new")
@@ -407,6 +525,7 @@ def create_user(
         {
             "request": request, "user": admin, "users": users,
             "temp_password": temp_password, "new_username": new_u.username,
+            "reset_username": None, "error": None,
         },
     )
 
